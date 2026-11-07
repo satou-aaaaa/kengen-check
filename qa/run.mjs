@@ -223,14 +223,19 @@ try {
       for (let i = 1; i < Math.min(r.list.length, 60); i++) if (K.G.BANK[r.list[i]].kind === K.G.BANK[r.list[i - 1]].kind) kinds++;
     }
     return [bad.slice(0, 5), kinds]; });
+  {
+    // 前の回の最後の問題を除いて作り直しても、やさしい5→ふつう10から始まり、その問題を1問目にしない（2026-11-07 CodeRabbit）
+    const rr = await p.evaluate(() => { const K = __km, bad = []; for (let n = 0; n < 100; n++) { const last = K.ALLKEYS[n * 7 % K.ALLKEYS.length], l = K.endlessList(new Set([last]), K.G.BANK[last].kind); const lv = l.slice(0, 15).map((t) => K.G.BY[K.G.BANK[t].kind].lv); if (lv.slice(0, 5).some((x) => x !== 0) || lv.slice(5).some((x) => x !== 1) || l.includes(last) || K.G.BANK[l[0]].kind === K.G.BANK[last].kind) bad.push(n); } return bad; });
+    check("とことんを2回目に始めても、やさしい→ふつうから・前の最後の問題と種類を1問目にしない", rr.length === 0, JSON.stringify(rr.slice(0, 5)));
+  }
   check("とことんの並びを300回作る：やさしい5→ふつう10から始まり、全部出し切るまで同じ問題なし・同じ種類が続く所はほぼ無い", er[0].length === 0 && er[1] < 300 * 3, JSON.stringify(er));
   {
     // 引き継ぎコードなどで数の所に文字が入っても、画面に HTML として出さない（2026-11-05 CodeRabbit）
     const q = await newPage(); await closeHow(q);
-    await q.evaluate(() => { const s = JSON.parse(localStorage.getItem("kengen-v1")) || { v: 1 }; s.ebest = '<img id="xss" src=x>'; s.dex = { add: '"><b id="xss2">' }; s.elast = '"><u id="xss4">'; s.runs = { e: { mode: "e", id: "x", date: "2026-11-05", list: ["nope|light-contacts-0", "nope|calc-sms-0"], res: [], life: '"><i id="xss3">' }, h: { list: "bad", res: [] }, p: { mode: "p", id: "y", date: "2026-11-05", list: ["constructor|1"], res: [] }, d: { mode: "d", id: "z", date: "x", list: ["need|walk-activity-0"], res: [] }, a1: { mode: "a", id: "a1", date: "2026-11-04", list: ["need|walk-activity-0"], res: [null] }, a2: { mode: "a", id: "a2", date: "2026-11-03", list: "bad", res: [] }, a3: { mode: "a", id: "a3", date: "2026-11-02", list: ["need|walk-activity-0", "need|walk-activity-1"], res: [{ m: 0 }], cur: { i: 1, tag: "need|walk-activity-1", wrong: "x", hints: 0 } } }; s.days = { "2026-11-05": { m: "x" }, bad: { m: [0] }, "2026-02-30": { m: [0] } }; localStorage.setItem("kengen-v1", JSON.stringify(s)); });
+    await q.evaluate(() => { const s = JSON.parse(localStorage.getItem("kengen-v1")) || { v: 1 }; s.ebest = '<img id="xss" src=x>'; s.dex = { add: '"><b id="xss2">' }; s.elast = '"><u id="xss4">'; s.runs = { e: { mode: "e", id: "x", date: "2026-11-05", list: ["nope|light-contacts-0", "nope|calc-sms-0"], res: [], life: '"><i id="xss3">' }, h: { list: "bad", res: [] }, p: { mode: "p", id: "y", date: "2026-11-05", list: ["constructor|1"], res: [] }, d: { mode: "d", id: "z", date: "x", list: ["need|walk-activity-0"], res: [] }, h2: { date: "2026-11-07", list: [], res: [] }, a1: { mode: "a", id: "a1", date: "2026-11-04", list: ["need|walk-activity-0"], res: [null] }, a2: { mode: "a", id: "a2", date: "2026-11-03", list: "bad", res: [] }, "a:2026-11-02": { mode: "a", id: "a3", date: "2026-11-02", list: ["need|walk-activity-0", "need|walk-activity-1"], res: [{ m: 0 }], cur: { i: 1, tag: "need|walk-activity-1", wrong: "x", hints: 0 } } }; s.days = { "2026-11-05": { m: "x" }, bad: { m: [0] }, "2026-02-30": { m: [0] }, "2026-11-06": { m: [] } }; localStorage.setItem("kengen-v1", JSON.stringify(s)); });
     await q.reload(); await q.waitForTimeout(250);
     const st = await q.evaluate(() => __km.load());
-    check("記録の形を直す：数の所の文字は0に・前の版の花（life）は読まない・形のちがう途中経過と日ごとの記録は捨てる", st.ebest === 0 && st.dex.add === 0 && !("life" in st.runs.e) && st.elast === null && !("h" in st.runs) && !("p" in st.runs) && !("d" in st.runs) && !("a1" in st.runs) && !("a2" in st.runs) && st.runs.a3 && st.runs.a3.cur === null && Object.keys(st.days).length === 0);
+    check("記録の形を直す：数の所の文字は0に・前の版の花（life）は読まない・形のちがう途中経過（置き場とモードが合わない回も）と日ごとの記録（問題の数が合わないものも）は捨てる", st.ebest === 0 && st.dex.add === 0 && !("life" in st.runs.e) && st.elast === null && !("h" in st.runs) && !("p" in st.runs) && !("d" in st.runs) && !("a1" in st.runs) && !("a2" in st.runs) && !("h2" in st.runs) && st.runs["a:2026-11-02"] && st.runs["a:2026-11-02"].cur === null && Object.keys(st.days).length === 0);
     await q.click("#go-e").catch(() => {}); await q.waitForTimeout(150);
     check("記録の文字を HTML として出さない", await q.locator("#xss, #xss2, #xss3, #xss4").count() === 0);
     await q.context().close();
@@ -293,9 +298,9 @@ try {
     check("古いタブで同じ問題に答えても二重に数えない", s.runs.d.res.length === 1 && Object.values(s.dex).reduce((x, y) => x + y) === 1);
     // ヒントの数は、別のタブで使った分も減らさない
     await a.click("#next"); await b.goto(url); await b.waitForTimeout(150); await b.click("#go-d");
-    await a.click("#hint"); await a.click("#hint");
-    await b.click("#hint");
-    check("別のタブで使ったヒントの数を減らさない", (await mem(a)).runs.d.cur.hints === 2);
+    let used = 0; for (let i = 0; i < 2; i++) if (await a.locator("#hint").isEnabled()) { await a.click("#hint"); used++; } // 2択の問題はヒント1回まで
+    if (await b.locator("#hint").isEnabled()) await b.click("#hint");
+    check("別のタブで使ったヒントの数を減らさない", used >= 1 && (await mem(a)).runs.d.cur.hints === used);
     await ctx.close();
   }
 

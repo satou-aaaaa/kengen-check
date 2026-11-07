@@ -402,7 +402,7 @@ const ALLKEYS = Object.keys(G.BANK);
 // used：この回でもう出した問題。prev：直前の種類（続けない）
 function endlessList(used = new Set(), prev = null) {
   const out = [];
-  if (!used.size) for (const [lv, n] of ERAMP) out.push(...drawFrom(G.kindsOf(lv), n, used, out.length ? G.BANK[out[out.length - 1]].kind : null));
+  for (const [lv, n] of ERAMP) out.push(...drawFrom(G.kindsOf(lv), n, used, out.length ? G.BANK[out[out.length - 1]].kind : prev)); // 前の回の問題を除いても、毎回やさしい→ふつうから始める
   out.push(...drawFrom(G.KINDS.map((k) => k.id), 60, used, out.length ? G.BANK[out[out.length - 1]].kind : prev));
   return out;
 }
@@ -450,7 +450,11 @@ function load() {
     if (x === undefined || y === undefined) { if (x || y) s.runs[m] = x || y; continue; }
     if (!x || !y) { const r = x || y; if (!r || bank(s, r) || doneOf(r)) continue; const bd = bookOf(s, r.mode); if (bd && !bd[r.date]) s.runs[m] = r; continue; }
     if (x.id !== y.id && x.date !== y.date) { const [w, l] = x.date > y.date ? [x, y] : [y, x]; bank(s, l); s.runs[m] = w; }
-    else if (x.id === y.id) { const px = prog(x), py = prog(y); s.runs[m] = px > py ? x : py > px ? y : n.runs[m]; }
+    else if (x.id === y.id) {
+      const px = prog(x), py = prog(y), w = px > py ? x : py > px ? y : n.runs[m], o = w === x ? y : x; s.runs[m] = w;
+      // 同じ問題の途中なら、両方のまちがい・多いほうのヒントを残す（どちらかを選んで片方を失わない）
+      if (w && o && w.cur && o.cur && w.res.length === o.res.length && w.cur.tag === o.cur.tag) s.runs[m] = { ...w, cur: { ...w.cur, wrong: [...new Set([...(w.cur.wrong || []), ...(o.cur.wrong || [])])], hints: Math.max(w.cur.hints || 0, o.cur.hints || 0) } };
+    }
   }
   return tidy(s);
 }
@@ -464,11 +468,11 @@ function tidy(s) {
   // 日付と日ごとの記録の形も確かめ、壊れたものは捨てる（細工した引き継ぎコードで画面が止まらないように。2026-11-05 CodeRabbit）
   const okDate = (v) => { if (typeof v !== "string" || !/^\d{4}-\d\d-\d\d$/.test(v)) return false; const t = Date.parse(v + "T00:00:00Z"); return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === v; }; // 2026-02-30 のような無い日も捨てる
   const okTag = (t) => typeof t === "string" && Object.prototype.hasOwnProperty.call(G.BANK, t);
-  const okRec = (x) => !!x && typeof x === "object" && Array.isArray(x.m) && x.m.every((v) => Number.isInteger(v) && v >= 0);
-  for (const b of [s.days, s.hdays, s.adays]) for (const d in b) if (!okDate(d) || !okRec(b[d])) delete b[d];
+  const okRec = (x, n) => !!x && typeof x === "object" && Array.isArray(x.m) && x.m.length === n && x.m.every((v) => Number.isInteger(v) && v >= 0);
+  for (const [b, n] of [[s.days, 5], [s.hdays, 3], [s.adays, 5]]) for (const d in b) if (!okDate(d) || !okRec(b[d], n)) delete b[d];
   for (const m in s.runs) {
     const r = s.runs[m]; if (r === null) continue;
-    if (typeof r !== "object" || !okDate(r.date) || !Array.isArray(r.list) || !r.list.every(okTag) || !Array.isArray(r.res) || !r.res.every((x) => x && typeof x === "object" && Number.isInteger(x.m) && x.m >= 0)) { delete s.runs[m]; continue; }
+    if (typeof r !== "object" || r.mode !== (m.startsWith("a:") ? "a" : m) || (r.mode === "a" && m !== "a:" + r.date) || !okDate(r.date) || !Array.isArray(r.list) || !r.list.every(okTag) || !Array.isArray(r.res) || !r.res.every((x) => x && typeof x === "object" && Number.isInteger(x.m) && x.m >= 0)) { delete s.runs[m]; continue; }
     if (r.cur != null && (typeof r.cur !== "object" || !Array.isArray(r.cur.wrong))) r.cur = null; else if (r.cur) r.cur.hints = num(r.cur.hints);
     delete r.life; // 前の形の「花」は読まない（とことんは、まちがえても続く）
   }
@@ -612,6 +616,7 @@ function startRun(mode, opt) {
     if (mode === "d" || mode === "h") list = listOf(mode, k);
     else if (typeof opt === "string") list = shuf(G.keysOf(opt)).slice(0, 5);
     else list = randomTags(opt, 5);
+    if (mode === "d" || mode === "h") bank(s, s.runs[mode]); // 別のタブで終えた前の日の回を、消す前に記録へ入れる
     s.runs[mode] = { mode, date: k, list, res: [], cur: null, id: rid(), a0: achGot(s) };
   });
   if (ng) return cal();
@@ -697,7 +702,7 @@ function choose(j) {
   $("hintbox").innerHTML = ""; $("msg").className = "msg"; $("msg").textContent = "";
   $("after").innerHTML = `<div class="verdict" role="status">
     <div class="hd">✓ 正解！ ${starStr(st)}</div>
-    <p class="why"><b>なぜ：</b>${esc(P.why)}</p>${srcHtml(P)}
+    <p class="why" data-a11y-say><b>なぜ：</b>${esc(P.why)}</p>${srcHtml(P)}
     <button class="main ok" id="next">${fin ? "結果を見る" : "次の問題へ"}</button></div>`;
   $("next").onclick = play;
   setTimeout(() => { if ($("next") && cur && cur.done && cur.tag === P.tag) $("next").scrollIntoView({ behavior: A11y && A11y.on("calm") ? "auto" : "smooth", block: "nearest" }); }, 60);
@@ -721,7 +726,7 @@ function finish() {
 // とことんの終わり：一発で見ぬいた数を自己ベストと比べる（他の人との順位は出さない）
 function endFinish(run) {
   const n = run.res.filter((x) => x.m === 0).length, all = run.res.length, miss = run.res.reduce((a, x) => a + x.m, 0); let prev = 0, newAch = [];
-  save((s2) => { prev = s2.ebest || 0; s2.ebest = Math.max(prev, n); const lt = run.list[Math.max(0, run.res.length - 1)]; if (lt) s2.elast = lt; const c = s2.runs.e; if (c && c.id === run.id) s2.runs.e = null; if (Array.isArray(run.a0)) newAch = achGot(s2).filter((id) => !run.a0.includes(id) && !s2.ach[id]); for (const id of newAch) s2.ach[id] = 1; });
+  save((s2) => { prev = s2.ebest || 0; s2.ebest = Math.max(prev, n); const lt = cur && !cur.done && cur.id === run.id ? cur.tag : run.list[Math.max(0, run.res.length - 1)]; if (lt) s2.elast = lt; const c = s2.runs.e; if (c && c.id === run.id) s2.runs.e = null; if (Array.isArray(run.a0)) newAch = achGot(s2).filter((id) => !run.a0.includes(id) && !s2.ach[id]); for (const id of newAch) s2.ach[id] = 1; });
   const s = load(), best = n > (run.b0 || 0) && n > 0;
   app.innerHTML = `
     <header><button class="icon" id="back" aria-label="ホームへ">←</button><h1>この許可、いる？<small>とことん</small></h1></header>
