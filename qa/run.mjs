@@ -133,6 +133,16 @@ try {
   const p = await newPage();
   check("はじめて開くと遊び方が出る", await p.locator("#howto[open]").count() === 1);
   await p.click("#howto-ok");
+  {
+    const q = await newPage();
+    await q.keyboard.press("Escape"); await q.waitForTimeout(100);
+    const shut = await q.locator("#howto[open]").count() === 0;
+    await q.reload(); await q.waitForTimeout(150);
+    const again = await q.locator("#howto[open]").count();
+    await q.click("#go-p"); await q.click("#back"); await q.waitForTimeout(100);
+    check("遊び方を Esc で閉じたあと、開き直しても・ホームに戻っても遊び方が出ない", shut && again === 0 && await q.locator("#howto[open]").count() === 0);
+    await q.close();
+  }
   check("文字の大きさ：はじめは「大きい」（21px）", await p.evaluate(() => getComputedStyle(document.documentElement).fontSize) === "21px");
   await p.click('.fsrow button[data-fs="3"]');
   await p.reload(); await p.waitForTimeout(150);
