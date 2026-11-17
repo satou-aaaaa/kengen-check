@@ -219,6 +219,20 @@ try {
   await solve(p); await p.click("#next");
   await p.click("#quit"); await p.waitForTimeout(150);
   check("「ここで降りる」で終わり、一発で見ぬいた数（2問）が自己ベストに残る", (await mem(p)).ebest === 2 && (await p.textContent("#eres")).includes("2問") && !(await mem(p)).runs.e);
+  { // とことんで正解した直後（次へを押す前）でも「ここで降りる」で終われ、正解した1問が数に入る（2026-11-17）
+    const q = await newPage(); await closeHow(q); await q.click("#go-e"); await solve(q);
+    const lab = await q.textContent("#quit"); await q.click("#quit"); await q.waitForTimeout(150);
+    check("とことんで正解した直後でも「ここで降りる」で終わり、正解した1問が数に入る（ボタンも「1問で終える」）", lab.includes("1問で終える") && await q.locator("#eres").count() === 1 && (await q.textContent("body")).includes("答えた問題 1問") && !(await mem(q)).runs.e, lab);
+    await q.close();
+  }
+  { // 遊び方を Esc で閉じて、すぐ開き直しても遊び方が出ない（close の知らせを待たない。2026-11-17）
+    const q = await newPage();
+    const was = await q.locator("#howto[open]").count();
+    await q.keyboard.press("Escape"); const tut = await q.evaluate(() => !!(JSON.parse(localStorage.getItem("kengen-v1") || "{}").tut));
+    await q.reload(); await q.waitForTimeout(200);
+    check("初めて開いて遊び方を Esc で閉じ、すぐ開き直しても遊び方が出ない", was === 1 && tut && await q.locator("#howto[open]").count() === 0, String(tut));
+    await q.close();
+  }
   await p.reload(); await p.waitForTimeout(250);
   check("降りたあと開き直しても、とことんの続きにならない", await p.locator(".ch").count() === 0);
   // とことんの並びを何百回作り、足していっても、全部出し切るまで同じ問題を出さない・同じ種類を続けない
@@ -360,6 +374,31 @@ try {
       const v = await r.evaluate(() => { const e = [...document.querySelectorAll(".title")].find((x) => x.offsetParent); if (!e) return null; const h = e.getBoundingClientRect().height; const f = e.style.flex; e.style.flex = "none"; const n = e.getBoundingClientRect().height; e.style.flex = f; return h - n; });
       if (v === null || v > 4) big.push(`${w}x${h}:${v === null ? "題なし" : "+" + Math.round(v) + "px"}`); }
     check("ホームの題は縦長の画面でも縦に伸びない（820×1180・390×844・1280×800）", big.length === 0, big.join(" ")); await c.close(); }
+// 保存できないとき：帯 #savewarn でちょうど1つ知らせ、2秒たっても残り、保存できるようになったら消える（2026-11-17。黙って記録が消えないように）
+{
+  const cw = await browser.newContext({ viewport: { width: 390, height: 800 } });
+  await cw.addInitScript(() => { window.__origSetItem = Storage.prototype.setItem; Storage.prototype.setItem = function () { throw new Error("full"); }; });
+  const pw = await cw.newPage(); await pw.goto(url); await pw.waitForTimeout(300);
+  const nW = () => pw.evaluate(() => document.querySelectorAll("#savewarn").length);
+  if (!(await pw.isVisible("#howto-ok"))) await pw.click("#f-how");
+  await pw.click("#howto-ok"); await pw.waitForTimeout(100);
+  const n1 = await nW(), txt = await pw.evaluate(() => (document.getElementById("savewarn") || {}).textContent || "");
+  await pw.waitForTimeout(2000); const n2 = await nW();
+  await pw.evaluate(() => { Storage.prototype.setItem = window.__origSetItem; });
+  await pw.click("#f-how"); await pw.click("#howto-ok"); await pw.waitForTimeout(100); const n3 = await nW();
+  check("保存できないブラウザで遊ぶと、帯（#savewarn）でちょうど1つ知らせ、2秒たっても残る・保存できるようになったら消える", n1 === 1 && n2 === 1 && txt.includes("保存できませんでした") && n3 === 0, JSON.stringify([n1, n2, n3, txt]));
+  await cw.close();
+}
+// 知らせ（.toast）が出ているあいだも、その下のボタンを押せる（2026-11-17。知らせがボタンをふさがないように）
+{
+  const ct = await browser.newContext({ viewport: { width: 390, height: 800 } });
+  const pt = await ct.newPage(); await pt.goto(url); await pt.waitForTimeout(300);
+  const at = await pt.evaluate(() => { const d = document.getElementById("howto"); if (d && d.open && d.close) d.close(); toast("おしらせの検査"); const t = [...document.querySelectorAll(".toast")].pop(), r = t.getBoundingClientRect(), b = document.createElement("button"); b.id = "qa-under"; b.textContent = "下"; b.style.cssText = "position:fixed;left:0;bottom:0;width:100%;height:" + (innerHeight - r.top + 10) + "px;z-index:1"; b.onclick = () => { b.dataset.hit = "1"; }; document.body.appendChild(b); return { x: r.left + r.width / 2, y: r.top + r.height / 2, pe: getComputedStyle(t).pointerEvents }; });
+  await pt.mouse.click(at.x, at.y); await pt.waitForTimeout(50);
+  const hit = await pt.evaluate(() => { const b = document.getElementById("qa-under"), on = !!document.querySelector(".toast"), h = b.dataset.hit === "1"; b.remove(); return on && h; });
+  check("知らせ（.toast）が出ているあいだも、その下のボタンを押せる（pointer-events:none）", at.pe === "none" && hit, JSON.stringify(at));
+  await ct.close();
+}
 await browser.close();
 server.close();
 check("画面のエラーが無い", errors.length === 0, errors.slice(0, 3).join(" | "));
