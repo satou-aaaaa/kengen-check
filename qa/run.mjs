@@ -156,7 +156,9 @@ try {
   await p.click("#go-d");
   const tags = await p.evaluate(() => __km.load().runs.d.list);
   check("今日の5問は日付から決まる（gen.js の dailyTags と同じ）", JSON.stringify(tags) === JSON.stringify(G.dailyTags(TODAY)));
-  check("問題の画面：スマホの場面と、大きな選び肢（高さ56px以上）", await p.locator("#scene .phone").count() === 1 && (await p.$$eval(".ch", (b) => b.map((x) => x.getBoundingClientRect().height))).every((h) => h >= 56) && await p.locator(".ch").count() >= 2);
+  // 文だけの問題（scene.t "q"）はスマホの場面を出さないので、日によって場面が無い（2026-11-17 に落ちた）
+  const ph1 = await p.locator("#scene .phone").count(), sc1 = (await p.innerHTML("#scene")).trim(), qt1 = ((await p.textContent("#q")) || "").trim();
+  check("問題の画面：スマホの場面（文だけの問題は問題文だけ）と、大きな選び肢（高さ56px以上）", (ph1 === 1 || (ph1 === 0 && sc1 === "" && qt1.length > 5)) && (await p.$$eval(".ch", (b) => b.map((x) => x.getBoundingClientRect().height))).every((h) => h >= 56) && await p.locator(".ch").count() >= 2);
   check("問題文には読み上げ用に、場面の中身（アプリの名前・仕事など）も入る", ((await p.getAttribute("#q", "aria-label")) || "").length > 20);
   await p.click(`.ch[data-j="${await wrongIdx(p)}"]`);
   check("まちがえると ✕ の印と「ちがう」の文字（色だけで分けない）・知らせは role=status", await p.locator(".ch.ng").count() === 1 && (await p.evaluate(() => getComputedStyle(document.querySelector(".ch.ng"), "::after").content)).includes("ちがう") && (await p.textContent("#msg")).includes("ちがいます") && await p.getAttribute("#msg", "role") === "status");
