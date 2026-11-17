@@ -23,15 +23,16 @@ node qa/run.mjs   # 全部の問題の中身（答え・出典・実在の名前
 - 好きなだけ遊べる：チケット・回数制限・🔒で開くモードを入れない（shared-workflows `routines/game-dev.md` F1〜F7）。上級・とことん・練習ははじめての日から遊べる（今日の5問・上級は1日1回）。
 - とことん（`runs.e`）：やさしい5→ふつう10のあと全部の種類を混ぜ、種類を選んでからまだ出していない問題を取る（`drawFrom`。同じ種類を続けない）。残りが少なくなると `moreList` で足し、全部（726問）出し切るまで同じ問題を出さない（`cyc` から先）。まちがえてもヒントを使っても続き、「ここで降りる」で終わる。自己ベスト `ebest` は一発で見ぬいた数。最後に出した問題 `elast` は次の回の1問目にしない。今日の記録・連続・Ko-fi・シェアには数えない（見ぬき帳には載る）。前の形の `life` は読まない。
 - ★はまちがい＋ヒントの数（0で★3・1で★2・2以上で★1）。ヒントは1回目が「見るところ」（`look`、答えは言わない）、2回目がまちがいの選び肢を消して2つにしぼる（選び肢が2つの問題は1回まで）。上級はヒントなし。正解したら必ず「なぜ」（`why`、90字以内）と出典を出す。時間制限は付けない。
-- 今日・上級は途中で閉じても続きから。途中経過はモードごと（`runs.d`・`runs.h`・`runs.p`・`runs.e`・`runs["a:日付"]`）。答える前に保存した進み具合が画面と同じ問題か確かめる（`same`）、ヒント・まちがいは別のタブの分を減らさない（`keep`）。`load` は合わせる前に両方を `fresh()` で補い、`tidy` で引き継ぎコードから来た値の形を直す（shared-workflows `incidents/2026-11-04-daily-game-save-gaps.md`）。
-- 実績（`ACH` 13個）は記録から毎回数え、新しく残すのは知らせ終えた印 `ach` だけ。続けるは合わせた日数（`playedDays`）、連続の日は1以上のときだけ出す。取りこぼした日（きのう〜7日前、`EPOCH` 以降）はカレンダーからあとから遊べる（`adays`。連続・今日の記録・Ko-fi・シェアには数えない）。
+- 今日・上級は途中で閉じても続きから。途中経過はモードごと（`runs.d`・`runs.h`・`runs.p`・`runs.e`・復習の `runs.r`・`runs["a:日付"]`）。答える前に保存した進み具合が画面と同じ問題か確かめる（`same`）、ヒント・まちがいは別のタブの分を減らさない（`keep`）。`load` は合わせる前に両方を `fresh()` で補い、`tidy` で引き継ぎコードから来た値の形を直す（shared-workflows `incidents/2026-11-04-daily-game-save-gaps.md`）。
+- 深さ（shared-workflows `template/depth.js` の写し。ここでは直さない）：答える前の「🎯 自信あり？」と、まちがえた・ヒントを使った問題が1日後→3日後→7日後に戻る「復習」（`runs.r`）。記録は別のキー `kengen-depth`。鍵は `BANK` の key（「種類|中身」）で、起動時に `Depth.setValid` で作り直せる鍵だけ数える。復習は今日の記録・連続・Ko-fi・カレンダーに数えない（見ぬき帳には載る）。問題の種類がばらばらで「どこ→なぜ」の形にならないので、2段目は足していない。
+- 実績（`ACH` 15個。うち2つは深さの `Depth.stats()`）は記録から毎回数え、新しく残すのは知らせ終えた印 `ach` だけ。続けるは合わせた日数（`playedDays`）、連続の日は1以上のときだけ出す。取りこぼした日（きのう〜7日前、`EPOCH` 以降）はカレンダーからあとから遊べる（`adays`。連続・今日の記録・Ko-fi・シェアには数えない）。
 - 文字は少なめ・一画面一問・やさしい日本語。お笑いの言葉は入れない（本物っぽさ優先）。ほかの作品の名前・キャラ・見た目は使わない。
 - 共有は遊ぶ人が押したときに開くリンク（X・LINE・Web Share・コピー）だけ。シェアの文に問題と答えを出さない（QA が選び肢の文で見る）。
 - 感想は「感想を送る」から GitHub の Issue フォーム（`.github/ISSUE_TEMPLATE/feedback.yml`）を開くだけ。名前・メールは聞かない。
 - 応援は Ko-fi（https://ko-fi.com/satouaaaaa）へのただのリンクだけ。今日の5問・上級を初めて終えて全部まちがいなしのときだけ、結果の画面の下に1行。遊ぶのは無料のまま、有料版は置かない。
 - 外へ通信しない。外から読むのは Google Fonts の文字だけ（CSP の `connect-src 'self'` を広げない）。記録は遊ぶ人のブラウザ（localStorage）だけ。
 - 見やすさ：`</head>` の前の見やすさの設定（`<!-- a11y:begin -->`〜`end`）は shared-workflows `template/a11y/a11y.html` の写し、`qa/a11y.mjs` は `template/qa/a11y.mjs` の写しで、ここでは直さない。色だけで分けない（正解は ✓、まちがいは ✕ と破線、許可は「✓ 許可」の文字）。押せる所は44px以上。
-- 引き継ぎ：`transfer.js` と `qa/transfer-check.mjs` は shared-workflows `template/` の写しで、ここでは直さない。`data-keys` は `kengen-v1,kengen-fs`（a11y-v1 は入れない）。記録の形を変えたら QA の `sample` も合わせる。
+- 引き継ぎ：`transfer.js` と `qa/transfer-check.mjs` は shared-workflows `template/` の写しで、ここでは直さない。`data-keys` は `kengen-v1,kengen-fs,kengen-depth`（a11y-v1 は入れない）。記録の形を変えたら QA の `sample` も合わせる。
 - 機能を足す・直すたびに `qa/run.mjs` に検査を足す。乱数で組む部分は何百回も作って確かめる（shared-workflows `incidents/2026-10-31-roppo-empty-village.md`）。
 - PWA（`manifest.webmanifest`・`sw.js`・`icon-*.png`）：画面のファイルを足したら `sw.js` の `SHELL` にも足し、中身を大きく変えたら `CACHE` の版を上げる。アイコンは `node tools/make-icons.cjs`、SNS 用の絵 `og.png` は `node tools/make-og.cjs`（今日の問題を入れない）。
 - 公開リポジトリなので、個人情報・鍵を入れない。
